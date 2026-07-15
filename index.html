@@ -615,8 +615,37 @@
                     <label for="close_horometro_final">Horómetro Final de Cierre</label>
                     <input type="number" id="close_horometro_final" placeholder="Ingrese horómetro final registrado" min="0">
                 </div>
+
+                <!-- Pregunta sobre fallas durante el turno -->
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>¿El equipo sufrió alguna falla o cambio de estado durante el turno?</label>
+                    <div style="display: flex; gap: 12px; margin-top: 6px;">
+                        <button type="button" class="btn-decision active-approve" id="btn-close-no-failure">
+                            <i data-lucide="x" style="width: 16px; height: 16px;"></i> No
+                        </button>
+                        <button type="button" class="btn-decision" id="btn-close-has-failure">
+                            <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> Sí
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenedor oculto de la tabla de inspección para el cierre -->
+                <div id="close-shift-inspect-section" class="hidden-field" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <h3 style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 10px;">Actualizar Componentes Inspeccionados</h3>
+                    <div class="inspect-table">
+                        <div class="table-header">
+                            <div class="col-num">N°</div>
+                            <div class="col-text">Elemento a Inspeccionar</div>
+                            <div class="col-status">Cumple</div>
+                            <div class="col-obs">Observaciones (Falla)</div>
+                        </div>
+                        <div class="table-body" id="close-items-container">
+                            <!-- Se rellenará dinámicamente -->
+                        </div>
+                    </div>
+                </div>
                 
-                <button type="button" id="btn-save-close-shift" class="btn-primary" style="width: 100%; margin-top: 15px;">
+                <button type="button" id="btn-save-close-shift" class="btn-primary" style="width: 100%; margin-top: 20px;">
                     <i data-lucide="check"></i> Guardar y Cerrar Chequeo
                 </button>
             </div>
@@ -717,6 +746,9 @@
         let estadoAprobacion = ""; // "APROBADO" o "RECHAZADO"
         let isSupSigned = false;
         let activeChecklistId = null; // Para Cerrar Turno
+        let activeChecklistRecord = null; // Para guardar el registro completo al buscar en Cerrar Turno
+        let closeShiftHasFailure = false; // Indica si se seleccionó 'SÍ' en la pregunta de fallas durante el turno
+        const respuestasCierre = {}; // Guarda las respuestas modificadas en el cierre de turno
         
         let canvasSup = null;
         let ctxSup = null;
@@ -950,6 +982,39 @@
                 document.getElementById("no-active-checklist").classList.add("hidden-field");
             });
 
+            // Toggle de Fallas en Cierre de Turno
+            const btnCloseNoFailure = document.getElementById("btn-close-no-failure");
+            const btnCloseHasFailure = document.getElementById("btn-close-has-failure");
+            const closeInspectSection = document.getElementById("close-shift-inspect-section");
+
+            btnCloseNoFailure.addEventListener("click", () => {
+                btnCloseNoFailure.classList.add("active-approve");
+                btnCloseHasFailure.classList.remove("active-reject");
+                closeInspectSection.classList.add("hidden-field");
+                closeShiftHasFailure = false;
+            });
+
+            btnCloseHasFailure.addEventListener("click", () => {
+                if (!activeChecklistRecord) return;
+                btnCloseHasFailure.classList.add("active-reject");
+                btnCloseNoFailure.classList.remove("active-approve");
+                closeInspectSection.classList.remove("hidden-field");
+                closeShiftHasFailure = true;
+
+                // Renderizar tabla
+                let closeItems = [];
+                if (activeChecklistRecord.tipo_equipo === "Excavadora") {
+                    closeItems = excavadoraItems;
+                } else if (activeChecklistRecord.tipo_equipo === "Bulldozer") {
+                    closeItems = bulldozerItems;
+                } else if (activeChecklistRecord.tipo_equipo === "Motoniveladora") {
+                    closeItems = motoniveladoraItems;
+                } else {
+                    closeItems = camionItems;
+                }
+                renderItemsEditableWithAnswers("close-items-container", closeItems, activeChecklistRecord.respuestas);
+            });
+
             // Buscar Chequeo Activo
             document.getElementById("btn-search-checklist").addEventListener("click", async () => {
                 const tipo = document.getElementById("close_tipo_equipo").value;
@@ -981,10 +1046,19 @@
                     if (data && data.length > 0) {
                         const check = data[0];
                         activeChecklistId = check.id;
+                        activeChecklistRecord = check; // Guardar el registro completo
+                        
                         document.getElementById("lbl-operador").textContent = check.inspector_nombre;
                         document.getElementById("lbl-inicio").textContent = `${check.fecha} ${check.hora}`;
                         document.getElementById("lbl-horometro-inicio").textContent = check.horometro;
                         document.getElementById("close_horometro_final").value = "";
+                        
+                        // Resetear estado de pregunta de fallas
+                        closeShiftHasFailure = false;
+                        btnCloseNoFailure.classList.add("active-approve");
+                        btnCloseHasFailure.classList.remove("active-reject");
+                        closeInspectSection.classList.add("hidden-field");
+                        
                         document.getElementById("active-checklist-details").classList.remove("hidden-field");
                     } else {
                         document.getElementById("no-active-checklist").classList.remove("hidden-field");
@@ -1010,14 +1084,82 @@
                     alert("El horómetro final debe ser mayor que el horómetro inicial (" + hi + ").");
                     return;
                 }
+
+                let respuestasFinales = activeChecklistRecord.respuestas; // Por defecto usar las originales
+                
+                if (closeShiftHasFailure) {
+                    // Validar respuestas de cierre
+                    let itemsAnswered = true;
+                    let obsFilled = true;
+                    let unansweredRow = null;
+                    let missingObsInput = null;
+
+                    let closeItems = [];
+                    if (activeChecklistRecord.tipo_equipo === "Excavadora") {
+                        closeItems = excavadoraItems;
+                    } else if (activeChecklistRecord.tipo_equipo === "Bulldozer") {
+                        closeItems = bulldozerItems;
+                    } else if (activeChecklistRecord.tipo_equipo === "Motoniveladora") {
+                        closeItems = motoniveladoraItems;
+                    } else {
+                        closeItems = camionItems;
+                    }
+
+                    closeItems.forEach(item => {
+                        const row = document.getElementById(`close-item-row-${item.id}`);
+                        const obs = document.getElementById(`close-obs-${item.id}`);
+
+                        if (respuestasCierre[item.id] === null || respuestasCierre[item.id] === undefined) {
+                            row.classList.add("unanswered");
+                            itemsAnswered = false;
+                            if (!unansweredRow) unansweredRow = row;
+                        } else {
+                            row.classList.remove("unanswered");
+                            if (respuestasCierre[item.id] === "NO" && (!respuestasCierre[`${item.id}_obs`] || !respuestasCierre[`${item.id}_obs`].trim())) {
+                                obs.style.borderColor = "var(--danger)";
+                                obsFilled = false;
+                                if (!missingObsInput) missingObsInput = obs;
+                            } else {
+                                obs.style.borderColor = "var(--border-color)";
+                            }
+                        }
+                    });
+
+                    if (!itemsAnswered) {
+                        alert("Por favor responda todos los ítems de la inspección.");
+                        if (unansweredRow) unansweredRow.scrollIntoView({ behavior: "smooth", block: "center" });
+                        return;
+                    }
+
+                    if (!obsFilled) {
+                        alert("Por favor ingrese el detalle de la falla para los elementos marcados como 'NO'.");
+                        if (missingObsInput) {
+                            missingObsInput.focus();
+                            missingObsInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }
+                        return;
+                    }
+
+                    // Armar objeto respuestasFinales
+                    respuestasFinales = {};
+                    closeItems.forEach(item => {
+                        respuestasFinales[item.id] = respuestasCierre[item.id];
+                        if (respuestasCierre[item.id] === "NO") {
+                            respuestasFinales[`${item.id}_obs`] = respuestasCierre[`${item.id}_obs`] || "";
+                        }
+                    });
+                }
                 
                 showModal("loading");
                 
                 try {
-                    // 1. Actualizar Supabase
+                    // 1. Actualizar Supabase (con horómetro final y las respuestas definitivas)
                     const { error } = await supabaseClient
                         .from("checklists")
-                        .update({ horometro_final: hf })
+                        .update({ 
+                            horometro_final: hf,
+                            respuestas: respuestasFinales
+                        })
                         .eq("id", activeChecklistId);
                         
                     if (error) throw error;
@@ -1445,6 +1587,75 @@
                 container.appendChild(row);
             });
             document.getElementById("count-items").textContent = count;
+        function renderItemsEditableWithAnswers(containerId, itemsList, savedAnswers) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+
+            // Resetear respuestasCierre y rellenar con las existentes
+            Object.keys(respuestasCierre).forEach(k => delete respuestasCierre[k]);
+
+            itemsList.forEach(item => {
+                const savedState = savedAnswers[item.id] || "N/A";
+                const savedObs = savedAnswers[`${item.id}_obs`] || "";
+                respuestasCierre[item.id] = savedState;
+                respuestasCierre[`${item.id}_obs`] = savedObs;
+
+                const row = document.createElement("div");
+                row.className = "table-row";
+                row.id = `close-item-row-${item.id}`;
+                row.innerHTML = `
+                    <div class="col-num">${item.id}</div>
+                    <div class="col-text">${item.label}</div>
+                    <div class="col-status">
+                        <div class="option-selector">
+                            <button type="button" class="opt-btn close-opt-btn ${savedState === 'SI' ? 'active' : ''}" data-id="${item.id}" data-state="SI">SÍ</button>
+                            <button type="button" class="opt-btn close-opt-btn ${savedState === 'NO' ? 'active' : ''}" data-id="${item.id}" data-state="NO">NO</button>
+                            <button type="button" class="opt-btn close-opt-btn ${savedState === 'N/A' ? 'active' : ''}" data-id="${item.id}" data-state="N/A">N/A</button>
+                        </div>
+                    </div>
+                    <div class="col-obs">
+                        <div class="inspect-item-obs-container">
+                            <input type="text" class="inspect-item-obs close-inspect-item-obs" id="close-obs-${item.id}" placeholder="Detalle la falla..." ${savedState === 'NO' ? '' : 'disabled'} value="${savedObs}">
+                        </div>
+                    </div>
+                `;
+
+                // Eventos botones
+                const buttons = row.querySelectorAll(".close-opt-btn");
+                buttons.forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        buttons.forEach(b => b.classList.remove("active"));
+                        btn.classList.add("active");
+                        
+                        const state = btn.getAttribute("data-state");
+                        respuestasCierre[item.id] = state;
+                        row.classList.remove("unanswered");
+
+                        // Activar observaciones si es NO
+                        const obsInput = document.getElementById(`close-obs-${item.id}`);
+                        if (state === "NO") {
+                            obsInput.removeAttribute("disabled");
+                            obsInput.classList.add("active-error");
+                            obsInput.setAttribute("required", "true");
+                        } else {
+                            obsInput.setAttribute("disabled", "true");
+                            obsInput.classList.remove("active-error");
+                            obsInput.removeAttribute("required");
+                            obsInput.value = "";
+                            obsInput.style.borderColor = "var(--border-color)";
+                            respuestasCierre[`${item.id}_obs`] = "";
+                        }
+                    });
+                });
+
+                // Registrar evento input para actualizar respuestasCierre
+                const obsInput = row.querySelector(".close-inspect-item-obs");
+                obsInput.addEventListener("input", (e) => {
+                    respuestasCierre[`${item.id}_obs`] = e.target.value.trim();
+                });
+
+                container.appendChild(row);
+            });
         }
 
         // --- CONTADOR ---
@@ -1503,6 +1714,7 @@
             canvas.width = r.width;
             canvas.height = r.height;
             if (ctx) {
+
                 ctx.strokeStyle = "#003875";
                 ctx.lineWidth = 3;
                 ctx.lineCap = "round";
