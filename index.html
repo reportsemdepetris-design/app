@@ -1426,7 +1426,7 @@
                 // Buscar datos en Supabase
                 supabaseClient.from("checklists").select("*").eq("id", checklistId).single().then(({ data: check, error }) => {
                     if (error || !check) {
-                        showModal("error", "No se encontró el checklist con ID especificado.");
+                        showModal("error", "Error de base de datos: " + (error ? error.message + " (" + error.code + ")" : "Chequeo no encontrado"));
                         return;
                     }
                     
@@ -1484,10 +1484,8 @@
                         canvasSup.height = r.height;
                     }, 300);
                     
-                    showModal("success");
-                    document.getElementById("close-modal-btn").onclick = () => {
-                        document.getElementById("status-modal").classList.remove("active");
-                    };
+                    // Cerrar el modal de carga inicial
+                    document.getElementById("status-modal").classList.remove("active");
                 }).catch(e => {
                     console.error(e);
                     showModal("error", "Error cargando chequeo: " + e.message);
