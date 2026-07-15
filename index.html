@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check List Diario - Equipos Mina</title>
+    <!-- Google Fonts (Outfit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Iconos Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SDK de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- html2pdf para descargar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        /* --- VARIABLES DE DISEÑO PREMIUM --- */
+        :root {
+            --font-sans: 'Outfit', sans-serif;
+            --bg-app: #f1f5f9;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-inverse: #ffffff;
+            
+            --primary: #003875; /* Azul Depetris */
+            --primary-light: #e0f2fe;
+            --primary-hover: #002752;
+            
+            --success: #10b981; /* Verde */
+            --danger: #ef4444; /* Rojo */
+            --neutral-btn: #64748b; /* Gris N/A */
+            --neutral-light: #f1f5f9;
+            
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --transition: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-sans);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding: 16px 8px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 650px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            padding: 20px;
+        }
+
+        /* --- ENCABEZADO --- */
+        .app-header {
+            text-align: center;
+            padding: 16px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 2px solid var(--primary);
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+        }
+
+        .brand-sub { font-size: 8px; color: var(--text-muted); }
+        .brand-main { font-size: 20px; color: var(--primary); font-weight: 900; }
+        .app-header h1 { font-size: 24px; font-weight: 700; }
+        .app-header .subtitle { font-size: 14px; color: var(--text-muted); }
+
+        /* --- SECCIONES DE FORMULARIO --- */
+        .form-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .section-header, .section-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .section-header h2, .section-title-wrapper h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .icon-primary { color: var(--primary); width: 24px; height: 24px; }
+
+        /* --- GRILLA DE IDENTIFICACIÓN --- */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full-width { grid-column: span 2; }
+        .hidden-field { display: none !important; }
+        label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+
+        input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            font-size: 15px;
+            font-weight: 500;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        input[type="date"], input[type="time"], select { cursor: pointer; }
+
+        /* --- DISEÑO DE TABLA --- */
+        .table-card {
+            padding: 16px 0;
+            overflow-x: auto;
+        }
+
+        .table-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            padding: 0 16px 12px 16px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .inspect-table {
+            min-width: 580px; /* Asegura layout tipo tabla horizontal */
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 45px 1.8fr 1.2fr 1.5fr;
+            background-color: var(--neutral-light);
+            padding: 10px 16px;
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 45px 1.8fr 1.2fr 1.5fr;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .table-row:last-child { border-bottom: none; }
+        .table-row.unanswered { border-left: 4px solid var(--danger); background-color: rgba(239, 68, 68, 0.02); }
+
+        .col-num { font-weight: 700; color: var(--primary); font-size: 13px; }
+        .col-text { font-size: 13px; font-weight: 500; line-height: 1.4; }
+        .col-status { display: flex; justify-content: center; }
+        .col-obs { display: flex; align-items: center; width: 100%; }
+
+        /* --- SELECTOR DE BOTONES (SI/NO/NA) --- */
+        .option-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            background-color: var(--bg-app);
+            padding: 3px;
+            border-radius: var(--radius-sm);
+            gap: 3px;
+            border: 1px solid var(--border-color);
+            width: 100%;
+        }
+
+        .opt-btn {
+            border: none;
+            background: none;
+            padding: 8px 0;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .opt-btn[data-state="SI"].active { background-color: var(--success); color: var(--text-inverse); }
+        .opt-btn[data-state="NO"].active { background-color: var(--danger); color: var(--text-inverse); }
+        .opt-btn[data-state="N/A"].active { background-color: var(--neutral-btn); color: var(--text-inverse); }
+
+        /* --- CUADRO DE OBSERVACIONES POR FILA --- */
+        .inspect-item-obs-container { width: 100%; }
+        .inspect-item-obs {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            font-size: 12px;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .inspect-item-obs:disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+
+        .inspect-item-obs.active-error {
+            border-color: var(--danger) !important;
+            background-color: var(--bg-card);
+            box-shadow: 0 0 0 2px var(--danger-light);
+        }
+
+        /* --- CANVAS DE FIRMA --- */
+        .signature-container { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+        #signature-canvas {
+            width: 100%;
+            height: 180px;
+            background-color: var(--bg-app);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-sm);
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* --- ACCIONES Y MODAL --- */
+        .btn-primary, .btn-secondary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+        }
+
+        .btn-primary { background-color: var(--primary); color: var(--text-inverse); padding: 14px 28px; font-size: 16px; width: 100%; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: var(--neutral-light); color: var(--text-muted); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background-color: var(--border-color); color: var(--text-main); }
+        .btn-sm { padding: 8px 16px; font-size: 13px; align-self: flex-start; }
+        .form-actions { margin-top: 10px; margin-bottom: 40px; }
+        .error-msg { color: var(--danger); font-size: 12px; font-weight: 600; display: none; margin-top: 4px; }
+
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.active { opacity: 1; pointer-events: all; }
+        .modal-content { width: 100%; max-width: 400px; text-align: center; padding: 30px; }
+        .modal-state { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .modal-state.hidden { display: none; }
+
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .success-icon { color: var(--success); }
+        .success-icon svg { width: 60px; height: 60px; }
+        .error-icon { color: var(--danger); }
+        .error-icon svg { width: 60px; height: 60px; }
+        .modal-state h3 { font-size: 20px; font-weight: 700; }
+        .modal-state p { font-size: 14px; color: var(--text-muted); }
+
+        /* --- RESPONSIVIDAD MÓVIL --- */
+        @media (max-width: 576px) {
+            .inspect-table {
+                min-width: 500px; /* Permite desplazamiento horizontal e incluye cabeceras */
+            }
+            .table-header, .table-row {
+                grid-template-columns: 35px 1.5fr 115px 1.1fr; /* Formato compacto */
+                padding: 10px 8px;
+                gap: 6px;
+            }
+            .col-text {
+                font-size: 12.5px;
+            }
+            .opt-btn {
+                padding: 6px 0;
+                font-size: 11px;
+            }
+            .inspect-item-obs {
+                padding: 6px 8px;
+                font-size: 11px;
+            }
+        }
+
+        /* --- NAVEGACIÓN DE PESTAÑAS --- */
+        .app-tabs {
+            display: flex;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            gap: 4px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            border: none;
+            background: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .tab-btn:hover {
+            background-color: var(--bg-app);
+            color: var(--text-main);
+        }
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: var(--text-inverse);
+        }
+
+        /* --- BOTONES DE APROBACIÓN --- */
+        .btn-decision {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .btn-decision.active-approve {
+            background-color: rgba(16, 185, 129, 0.1) !important;
+            border-color: var(--success) !important;
+            color: var(--success) !important;
+        }
+        .btn-decision.active-reject {
+            background-color: rgba(239, 68, 68, 0.1) !important;
+            border-color: var(--danger) !important;
+            color: var(--danger) !important;
+        }
+        
+        .operator-signature-img {
+            max-height: 120px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background-color: #ffffff;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Encabezado -->
+        <header class="app-header">
+            <div class="brand">
+                <span class="brand-sub">MINERÍA Y TRANSPORTE</span>
+                <span class="brand-main">DEPETRIS</span>
+            </div>
+            <h1>LISTA DE CHEQUEO PRE-USO</h1>
+            <p class="subtitle">EQUIPOS PESADOS - UNIDAD MINA</p>
+        </header>
+
+        <!-- Navegación de Pestañas -->
+        <nav class="app-tabs" id="nav-tabs">
+            <button type="button" class="tab-btn active" id="tab-pre-use">
+                <i data-lucide="clipboard-check"></i> Chequeo Pre-Uso
+            </button>
+            <button type="button" class="tab-btn" id="tab-close-shift">
+                <i data-lucide="lock"></i> Cerrar Turno
+            </button>
+        </nav>
+
+        <!-- Formulario Principal -->
+        <form id="checklist-form" novalidate>
+            
+            <!-- SECCIÓN 1: Identificación del Equipo -->
+            <section class="form-section card">
+                <div class="section-header">
+                    <i data-lucide="truck" class="icon-primary"></i>
+                    <h2>1. Identificación del Equipo</h2>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="tipo_equipo">Tipo de Equipo</label>
+                        <select id="tipo_equipo" required>
+                            <option value="Camión Tolva">Camión Tolva</option>
+                            <option value="Excavadora">Excavadora</option>
+                            <option value="Bulldozer">Bulldozer</option>
+                            <option value="Motoniveladora">Motoniveladora</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fecha">Fecha</label>
+                        <input type="date" id="fecha" onkeydown="return false" onclick="this.showPicker()" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="hora">Hora</label>
+                        <input type="time" id="hora" onkeydown="return false" onclick="this.showPicker()" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="turno">Turno</label>
+                        <select id="turno" required>
+                            <option value="">Seleccione Turno...</option>
+                            <option value="Dia">Día</option>
+                            <option value="Noche">Noche</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="faena">Faena</label>
+                        <input type="text" id="faena" placeholder="Ej: Mina Pleito" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="numero_equipo">N° de Equipo (Código)</label>
+                        <input type="text" id="numero_equipo" placeholder="Ej: CT-04 / EX-106" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="horometro">Horómetro Inicio</label>
+                        <input type="number" id="horometro" placeholder="Ej: 14520" required min="0">
+                    </div>
+                    <!-- Campo Condicional: Horómetro Final (Para Excavadora y Bulldozer) -->
+                    <div class="form-group hidden-field" id="horometro-final-group">
+                        <label for="horometro_final">Horómetro Final</label>
+                        <input type="number" id="horometro_final" placeholder="Ej: 14525" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="inspector_nombre">Nombre Conductor / Operador</label>
+                        <input type="text" id="inspector_nombre" placeholder="Ej: Sebastian Rivera" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="inspector_rut">RUT Conductor / Operador</label>
+                        <input type="text" id="inspector_rut" placeholder="Ej: 12.345.678-9" required>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 2: Componentes a Inspeccionar -->
+            <section class="form-section">
+                <div class="section-title-wrapper">
+                    <i data-lucide="clipboard-check" class="icon-primary"></i>
+                    <h2>2. Componentes a Inspeccionar</h2>
+                </div>
+
+                <!-- Tabla Unificada: Elementos a Inspeccionar -->
+                <div class="table-card card">
+                    <h3 class="table-title"><span id="table-title-name">Camión Tolva</span> (<span id="count-items">0</span>/<span id="count-total">42</span>)</h3>
+                    <div class="inspect-table">
+                        <div class="table-header">
+                            <div class="col-num">N°</div>
+                            <div class="col-text">Elemento a Inspeccionar</div>
+                            <div class="col-status">Cumple</div>
+                            <div class="col-obs">Observaciones (Falla)</div>
+                        </div>
+                        <div class="table-body" id="items-container">
+                            <!-- JS generará las filas dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 3: Observaciones Finales -->
+            <section class="form-section card">
+                <div class="section-header">
+                    <i data-lucide="message-square" class="icon-primary"></i>
+                    <h2>3. Observaciones del Equipo</h2>
+                </div>
+                <div class="form-group">
+                    <label for="observaciones">Detalle de fallas u observaciones encontradas:</label>
+                    <textarea id="observaciones" rows="4" placeholder="Escriba aquí si algún elemento no cumple o requiere atención especial..."></textarea>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 4: Conductor y Firma -->
+            <section class="form-section card">
+                <div class="section-header">
+                    <i data-lucide="user-check" class="icon-primary"></i>
+                    <h2>4. Realizado Por (Operador)</h2>
+                </div>
+                <div class="form-grid">
+                    <!-- Lienzo de Firma -->
+                    <div class="form-group full-width">
+                        <label>Firma Digital (Firme con su dedo en el cuadro)</label>
+                        <div class="signature-container">
+                            <canvas id="signature-canvas"></canvas>
+                            <button type="button" id="clear-signature" class="btn-secondary btn-sm">
+                                <i data-lucide="trash-2"></i> Limpiar Firma
+                            </button>
+                        </div>
+                        <span class="error-msg" id="signature-error">Debe firmar el documento antes de enviar.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Botón de Guardar -->
+            <div class="form-actions">
+                <button type="submit" id="submit-btn" class="btn-primary">
+                    <i data-lucide="send"></i> Guardar Check List
+                </button>
+            </div>
+        </form>
+
+        <!-- Formulario Cerrar Turno -->
+        <section id="close-shift-section" class="form-section card hidden-field">
+            <div class="section-header">
+                <i data-lucide="lock" class="icon-primary"></i>
+                <h2>Cerrar Horómetro Final</h2>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
+                Seleccione el equipo para ingresar el Horómetro Final registrado al terminar su jornada.
+            </p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="close_tipo_equipo">Tipo de Equipo</label>
+                    <select id="close_tipo_equipo">
+                        <option value="Camión Tolva">Camión Tolva</option>
+                        <option value="Excavadora">Excavadora</option>
+                        <option value="Bulldozer">Bulldozer</option>
+                        <option value="Motoniveladora">Motoniveladora</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="close_numero_equipo">N° de Equipo (Código)</label>
+                    <input type="text" id="close_numero_equipo" placeholder="Ej: CT-04">
+                </div>
+                <button type="button" id="btn-search-checklist" class="btn-primary" style="grid-column: span 2; margin-top: 8px; width: 100%;">
+                    <i data-lucide="search"></i> Buscar Chequeo de Hoy
+                </button>
+            </div>
+
+            <!-- Datos del chequeo activo encontrado -->
+            <div id="active-checklist-details" class="hidden-field" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <div style="background-color: var(--neutral-light); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 12px;">
+                    <p style="font-size: 13px; font-weight: 600;">Chequeo Encontrado:</p>
+                    <p style="font-size: 13px; color: var(--text-main); margin-top: 4px; line-height: 1.6;">
+                        <b>Operador:</b> <span id="lbl-operador">Gonzalo Jorquera</span><br>
+                        <b>Fecha/Hora de Inicio:</b> <span id="lbl-inicio">10-07-2026 08:00</span><br>
+                        <b>Horómetro Inicio:</b> <span id="lbl-horometro-inicio">1200</span>
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="close_horometro_final">Horómetro Final de Cierre</label>
+                    <input type="number" id="close_horometro_final" placeholder="Ingrese horómetro final registrado" min="0">
+                </div>
+                
+                <button type="button" id="btn-save-close-shift" class="btn-primary" style="width: 100%; margin-top: 15px;">
+                    <i data-lucide="check"></i> Guardar y Cerrar Chequeo
+                </button>
+            </div>
+            
+            <div id="no-active-checklist" class="hidden-field" style="margin-top: 15px; text-align: center; color: var(--danger); font-size: 13px; font-weight: 600;">
+                No se encontró ningún chequeo pendiente de cierre hoy para este equipo.
+            </div>
+        </section>
+
+        <!-- Sección del Supervisor (Solo visible en modo aprobación) -->
+        <section id="supervisor-section" class="form-section card hidden-field" style="margin-top: 20px;">
+            <div class="section-header">
+                <i data-lucide="user-check" class="icon-primary"></i>
+                <h2>Aprobación del Jefe de Turno</h2>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label>Resolución del Equipo</label>
+                    <div style="display: flex; gap: 12px; margin-top: 6px;">
+                        <button type="button" class="btn-decision" id="btn-approve">
+                            <i data-lucide="check" style="width: 16px; height: 16px;"></i> Aprobado para Trabajar
+                        </button>
+                        <button type="button" class="btn-decision" id="btn-reject">
+                            <i data-lucide="x" style="width: 16px; height: 16px;"></i> Rechazado
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="sup_nombre">Nombre del Jefe de Turno</label>
+                    <input type="text" id="sup_nombre" placeholder="Ingrese su nombre completo" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="sup_observaciones">Observaciones / Indicaciones adicionales</label>
+                    <textarea id="sup_observaciones" placeholder="Escriba aquí observaciones de la revisión..." rows="3"></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label>Firma del Jefe de Turno (Firme con su dedo en el cuadro)</label>
+                    <div class="signature-container">
+                        <canvas id="sup-signature-canvas" style="border: 2px dashed var(--border-color); border-radius: var(--radius-sm); width: 100%; height: 150px; background-color: var(--bg-app); cursor: crosshair;"></canvas>
+                        <button type="button" class="btn-secondary btn-sm" id="clear-sup-signature">
+                            <i data-lucide="trash-2"></i> Limpiar Firma
+                        </button>
+                    </div>
+                    <span class="error-msg" id="sup-signature-error" style="display: none;">Debe firmar la revisión antes de enviar.</span>
+                </div>
+                
+                <button type="button" id="btn-submit-approval" class="btn-primary full-width" style="grid-column: span 2; margin-top: 10px; width: 100%;">
+                    <i data-lucide="check-square"></i> Registrar Decisión y Firmar
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal de Carga / Éxito / Error -->
+    <div id="status-modal" class="modal">
+        <div class="modal-content card">
+            <div id="modal-loading" class="modal-state">
+                <div class="spinner"></div>
+                <h3>Guardando Check List...</h3>
+                <p>Enviando datos al servidor seguro...</p>
+            </div>
+            <div id="modal-success" class="modal-state hidden">
+                <div class="success-icon"><i data-lucide="check-circle-2"></i></div>
+                <h3>¡Guardado Exitosamente!</h3>
+                <p>El checklist diario ha sido registrado. Ya puedes cerrar esta ventana y revisar tu descarga.</p>
+                <button type="button" id="close-modal-btn" class="btn-primary">Aceptar</button>
+            </div>
+            <div id="modal-error" class="modal-state hidden">
+                <div class="error-icon"><i data-lucide="alert-triangle"></i></div>
+                <h3>Error al Guardar</h3>
+                <p id="modal-error-msg">Ocurrió un problema de conexión. Inténtalo nuevamente.</p>
+                <button type="button" id="retry-modal-btn" class="btn-primary">Reintentar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- --- LÓGICA DE JAVASCRIPT --- -->
+    <script>
+        // --- CONFIGURACIÓN DE BASE DE DATOS (SUPABASE) y WEBHOOKS ---
+        const SUPABASE_URL = "https://eajyapjydfbcibwrawyk.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhanlhcGp5ZGZiY2lid3Jhd3lrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0NTAwODEsImV4cCI6MjA5OTAyNjA4MX0.CAUiPDb7YERALscZ0JcYuAcTIfYXsh3kZ3NnCyI0TRg";
+        
+        // URL para envío automático de correos (Webhook de automatización, ej: Make/Zapier)
+        const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwAkKPs-PG_7utZ05kdTxayNVAs62lj8rdlL_LNSF8nhiF3mWMGgidOnmnpHQ7gHWSFlA/exec";
+
+        let supabaseClient = null;
+        try {
+            if (typeof supabase !== "undefined" && SUPABASE_URL !== "") {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch (e) {
+            console.error("No se pudo iniciar el cliente Supabase:", e);
+        }
+
+        // --- VARIABLES DE CONTROL DE CICLO DE VIDA ---
+        let isSupervisorMode = false;
+        let supervisorChecklistId = null;
+        let estadoAprobacion = ""; // "APROBADO" o "RECHAZADO"
+        let isSupSigned = false;
+        let activeChecklistId = null; // Para Cerrar Turno
+        
+        let canvasSup = null;
+        let ctxSup = null;
+        let drawingSup = false;
+
+        // --- LISTADO DE CAMIÓN TOLVA (42 ÍTEMS) ---
+        const camionItems = [
+            { id: "1", label: "Estado de alarma de retroceso" },
+            { id: "2", label: "Estado de Bocina" },
+            { id: "3", label: "Regulación de frenos y embrague" },
+            { id: "4", label: "Estado de paquetes de resortes" },
+            { id: "5", label: "Estado de barra stabilizadora" },
+            { id: "6", label: "Estado de amortiguadores" },
+            { id: "7", label: "Estado de ganchos portalón (sistema cierre portalón)" },
+            { id: "8", label: "Luces exteriores de camión (frontales y traseras)" },
+            { id: "9", label: "Luces exteriores tolva" },
+            { id: "10", label: "Focos faeneros retroceso" },
+            { id: "11", label: "Luz Día" },
+            { id: "12", label: "Luz piloto toma fuerza" },
+            { id: "13", label: "Luz de baliza y pértiga" },
+            { id: "14", label: "Estado neumáticos" },
+            { id: "15", label: "Presión aire neumáticos en general" },
+            { id: "16", label: "Niveles de aceite de motor y agua" },
+            { id: "17", label: "Fugas de agua, aceite y/o combustible" },
+            { id: "18", label: "Fugas de aire" },
+            { id: "19", label: "Estado de correas de motor" },
+            { id: "20", label: "Estado instrumentos tablero control" },
+            { id: "21", label: "Estado de vidrios y parabrisas" },
+            { id: "22", label: "Estado de limpiaparabrisas" },
+            { id: "23", label: "Estado de espejos retrovisores" },
+            { id: "24", label: "Estado de aprete de pernos y tuercas de ruedas" },
+            { id: "25", label: "Aseo exterior del equipo (en general)" },
+            { id: "26", label: "Aseo Interior del equipo (cabina)" },
+            { id: "27", label: "Estado Aire Acondicionado" },
+            { id: "28", label: "Estado Pasamanos-pisaderas" },
+            { id: "29", label: "Estado Asiento conductor" },
+            { id: "30", label: "Documentos del camión (*)" },
+            { id: "31", label: "Documentos del conductor (**)" },
+            { id: "32", label: "Estado de autoadhesivos" },
+            { id: "33", label: "Herramientas de cargo del camión (*)" },
+            { id: "34", label: "Radio comunicaciones" },
+            { id: "35", label: "Gata (*)" },
+            { id: "36", label: "Extintor (*)" },
+            { id: "37", label: "Botiquín (*)" },
+            { id: "38", label: "Triángulos" },
+            { id: "39", label: "Estado flexibles sistema Aire (roce-filtraciones)" },
+            { id: "40", label: "Estado de flexibles sist Hidráulico (roce-filtraciones)" },
+            { id: "41", label: "Estado operacional del tacógrafo" },
+            { id: "42", label: "Rv. Visual indicador filtro aire" }
+        ];
+
+        // --- LISTADO DE EXCAVADORA (32 ÍTEMS) ---
+        const excavadoraItems = [
+            { id: "1", label: "Luces interior" },
+            { id: "2", label: "Luces exterior" },
+            { id: "3", label: "Niveles de aceite, líquido y agua" },
+            { id: "4", label: "Correas de motor" },
+            { id: "5", label: "Correas alternador" },
+            { id: "6", label: "Instrumentos control en tablero" },
+            { id: "7", label: "Estado estructural" },
+            { id: "8", label: "Balde" },
+            { id: "9", label: "Dientes" },
+            { id: "10", label: "Planchas desgaste" },
+            { id: "11", label: "Vidrios y parabrisas" },
+            { id: "12", label: "Fugas de aceites" },
+            { id: "13", label: "Limpia parabrisas" },
+            { id: "14", label: "Radio comunicaciones" },
+            { id: "15", label: "Fugas líquidos y combustibles" },
+            { id: "16", label: "Espejos retrovisores" },
+            { id: "17", label: "Herramientas de cargo del operador" },
+            { id: "18", label: "Alarma retroceso" },
+            { id: "19", label: "Visor indicador saturación de aire" },
+            { id: "20", label: "Documentos de la excavadora" },
+            { id: "21", label: "Extintor" },
+            { id: "22", label: "Aseo exterior de la excavadora" },
+            { id: "23", label: "Aseo interior de la excavadora" },
+            { id: "24", label: "Revisión sistema de comandos y controles" },
+            { id: "25", label: "Revisión del sistema de articulación" },
+            { id: "26", label: "Estados de rodillos" },
+            { id: "27", label: "Tensión de oruga" },
+            { id: "28", label: "Estados de zapatas" },
+            { id: "29", label: "Estados de flexibles" },
+            { id: "30", label: "Estado chapa contacto" },
+            { id: "31", label: "Estado chapa puerta" },
+            { id: "32", label: "Desgaste de segmentos" }
+        ];
+
+        // --- LISTADO DE BULLDOZER (23 ÍTEMS) ---
+        const bulldozerItems = [
+            { id: "1", label: "Nivel de aceite motor" },
+            { id: "2", label: "Nivel de aceite transmisión" },
+            { id: "3", label: "Nivel de aceite sistema hidráulico" },
+            { id: "4", label: "Nivel de aceite eje pivote" },
+            { id: "5", label: "Estado de sistema de frenos" },
+            { id: "6", label: "Nivel de combustible" },
+            { id: "7", label: "Filtro primario de combustible revisar (drenar)" },
+            { id: "8", label: "Agua y sedimentos del tanque de combustible" },
+            { id: "9", label: "Filtro de cabina aire fresco limpiar inspeccionar" },
+            { id: "10", label: "Alarma de retroceso - bocina" },
+            { id: "11", label: "Luces baja, altas, neblineros" },
+            { id: "12", label: "Indicadores de t°/aceite/batería/luces testigos" },
+            { id: "13", label: "Cinturón de seguridad" },
+            { id: "14", label: "Luz de marcha atrás (focos faeneros)" },
+            { id: "15", label: "Extintor" },
+            { id: "16", label: "Aseo interior y exterior" },
+            { id: "17", label: "Freno de servicio" },
+            { id: "18", label: "Limpia parabrisas" },
+            { id: "19", label: "Vidrios, espejos y parabrisas" },
+            { id: "20", label: "Revisar alrededor del equipo" },
+            { id: "21", label: "Número de identificación" },
+            { id: "22", label: "Logos empresa" },
+            { id: "23", label: "Otros" }
+        ];
+
+        // --- LISTADO DE MOTONIVELADORA (27 ÍTEMS) ---
+        const motoniveladoraItems = [
+            { id: "1", label: "Tolva, balde, hoja - inspeccionar" },
+            { id: "2", label: "Escalera de acceso - inspeccionar" },
+            { id: "3", label: "Pasamanos, rodapiés - inspeccionar" },
+            { id: "4", label: "Parabrisas, vidrios laterales" },
+            { id: "5", label: "Espejos retrovisores - inspeccionar" },
+            { id: "6", label: "Limpia parabrisas" },
+            { id: "7", label: "Cinturón de seguridad - inspeccionar" },
+            { id: "8", label: "Radio de comunic./ sist despacho probar" },
+            { id: "9", label: "Inspeccionar por daño equipo (golpes/otros)" },
+            { id: "10", label: "Asientos" },
+            { id: "11", label: "Aire acondicionado" },
+            { id: "12", label: "Bocina del equipo" },
+            { id: "13", label: "Luces traseras / delanteras" },
+            { id: "14", label: "Mandos tándem" },
+            { id: "15", label: "Nivel de aceite motor" },
+            { id: "16", label: "Nivel de aceite transmisión" },
+            { id: "17", label: "Nivel de aceite hidráulico" },
+            { id: "18", label: "Nivel de refrigerante" },
+            { id: "19", label: "Tornamesa" },
+            { id: "20", label: "Cilindros de dirección" },
+            { id: "21", label: "Motor giro" },
+            { id: "22", label: "Cilindros de levante de la tornamesa" },
+            { id: "23", label: "Sistema de monitoreo electrónico" },
+            { id: "24", label: "Sistema de freno servicio" },
+            { id: "25", label: "Sistema de freno estacionamiento" },
+            { id: "26", label: "Extintor manual" },
+            { id: "27", label: "Sistema supresor de incendio" }
+        ];
+
+        // Estado global de respuestas
+        const respuestas = {};
+        let activeItems = camionItems;
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener("DOMContentLoaded", () => {
+            // Iconos
+            try {
+                if (typeof lucide !== "undefined") lucide.createIcons();
+            } catch(e) {}
+
+            // Pre-completar fecha y hora local del dispositivo
+            const hoy = new Date();
+            const year = hoy.getFullYear();
+            const month = String(hoy.getMonth() + 1).padStart(2, '0');
+            const day = String(hoy.getDate()).padStart(2, '0');
+            document.getElementById("fecha").value = `${year}-${month}-${day}`;
+            
+            const horas = String(hoy.getHours()).padStart(2, '0');
+            const minutos = String(hoy.getMinutes()).padStart(2, '0');
+            document.getElementById("hora").value = `${horas}:${minutos}`;
+
+            // Renderizar tabla inicial (Camión Tolva)
+            renderItems("items-container", camionItems);
+
+            // Escuchar cambios de Tipo de Equipo
+            const tipoEquipoSelect = document.getElementById("tipo_equipo");
+            const horometroFinalGroup = document.getElementById("horometro-final-group");
+
+            tipoEquipoSelect.addEventListener("change", () => {
+                const selectedType = tipoEquipoSelect.value;
+                
+                // El Horómetro Final ya no se solicita al inicio del turno (Pre-Uso)
+                horometroFinalGroup.classList.add("hidden-field");
+                document.getElementById("horometro_final").removeAttribute("required");
+                document.getElementById("horometro_final").value = "";
+                
+                // Asignar la lista activa correspondiente
+                if (selectedType === "Excavadora") {
+                    activeItems = excavadoraItems;
+                } else if (selectedType === "Bulldozer") {
+                    activeItems = bulldozerItems;
+                } else if (selectedType === "Motoniveladora") {
+                    activeItems = motoniveladoraItems;
+                } else {
+                    activeItems = camionItems;
+                }
+                
+                // Actualizar textos y contador total
+                document.getElementById("table-title-name").textContent = selectedType;
+                document.getElementById("count-total").textContent = activeItems.length;
+
+                // Limpiar respuestas y re-renderizar
+                renderItems("items-container", activeItems);
+                updateCounter();
+            });
+
+            // Canvas
+            initSignatureCanvas();
+
+            // Submit
+            document.getElementById("checklist-form").addEventListener("submit", handleSubmit);
+
+            // Pestañas (Tabs) Navigation
+            const tabPreUse = document.getElementById("tab-pre-use");
+            const tabCloseShift = document.getElementById("tab-close-shift");
+            const formChecklist = document.getElementById("checklist-form");
+            const sectionCloseShift = document.getElementById("close-shift-section");
+
+            tabPreUse.addEventListener("click", () => {
+                tabPreUse.classList.add("active");
+                tabCloseShift.classList.remove("active");
+                formChecklist.classList.remove("hidden-field");
+                sectionCloseShift.classList.add("hidden-field");
+            });
+
+            tabCloseShift.addEventListener("click", () => {
+                tabCloseShift.classList.add("active");
+                tabPreUse.classList.remove("active");
+                formChecklist.classList.add("hidden-field");
+                sectionCloseShift.classList.remove("hidden-field");
+                
+                // Limpiar campos de búsqueda al cambiar
+                document.getElementById("close_numero_equipo").value = "";
+                document.getElementById("active-checklist-details").classList.add("hidden-field");
+                document.getElementById("no-active-checklist").classList.add("hidden-field");
+            });
+
+            // Buscar Chequeo Activo
+            document.getElementById("btn-search-checklist").addEventListener("click", async () => {
+                const tipo = document.getElementById("close_tipo_equipo").value;
+                const numero = document.getElementById("close_numero_equipo").value.trim();
+                
+                if (!numero) {
+                    alert("Por favor ingrese el número de equipo.");
+                    return;
+                }
+                
+                document.getElementById("active-checklist-details").classList.add("hidden-field");
+                document.getElementById("no-active-checklist").classList.add("hidden-field");
+                
+                try {
+                    // Buscar en Supabase el último chequeo para este equipo hoy que tenga horometro_final = null
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const { data, error } = await supabaseClient
+                        .from("checklists")
+                        .select("*")
+                        .eq("tipo_equipo", tipo)
+                        .eq("numero_equipo", numero)
+                        .is("horometro_final", null)
+                        .gte("fecha", todayStr)
+                        .order("created_at", { ascending: false })
+                        .limit(1);
+                        
+                    if (error) throw error;
+                    
+                    if (data && data.length > 0) {
+                        const check = data[0];
+                        activeChecklistId = check.id;
+                        document.getElementById("lbl-operador").textContent = check.inspector_nombre;
+                        document.getElementById("lbl-inicio").textContent = `${check.fecha} ${check.hora}`;
+                        document.getElementById("lbl-horometro-inicio").textContent = check.horometro;
+                        document.getElementById("close_horometro_final").value = "";
+                        document.getElementById("active-checklist-details").classList.remove("hidden-field");
+                    } else {
+                        document.getElementById("no-active-checklist").classList.remove("hidden-field");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("Error al buscar chequeo: " + e.message);
+                }
+            });
+
+            // Guardar y Cerrar Chequeo
+            document.getElementById("btn-save-close-shift").addEventListener("click", async () => {
+                const hfVal = document.getElementById("close_horometro_final").value;
+                if (!hfVal || parseFloat(hfVal) <= 0) {
+                    alert("Por favor ingrese un horómetro final válido.");
+                    return;
+                }
+                
+                const hf = parseFloat(hfVal);
+                const hi = parseFloat(document.getElementById("lbl-horometro-inicio").textContent);
+                
+                if (hf <= hi) {
+                    alert("El horómetro final debe ser mayor que el horómetro inicial (" + hi + ").");
+                    return;
+                }
+                
+                showModal("loading");
+                
+                try {
+                    // 1. Actualizar Supabase
+                    const { error } = await supabaseClient
+                        .from("checklists")
+                        .update({ horometro_final: hf })
+                        .eq("id", activeChecklistId);
+                        
+                    if (error) throw error;
+                    
+                    // 2. Traer el checklist completo
+                    const { data: updatedCheck, error: fetchErr } = await supabaseClient
+                        .from("checklists")
+                        .select("*")
+                        .eq("id", activeChecklistId)
+                        .single();
+                        
+                    if (fetchErr) throw fetchErr;
+                    
+                    // Reconstruir la lista de items para el generador de PDF
+                    let closeItems = [];
+                    if (updatedCheck.tipo_equipo === "Excavadora") {
+                        closeItems = excavadoraItems;
+                    } else if (updatedCheck.tipo_equipo === "Bulldozer") {
+                        closeItems = bulldozerItems;
+                    } else if (updatedCheck.tipo_equipo === "Motoniveladora") {
+                        closeItems = motoniveladoraItems;
+                    } else {
+                        closeItems = camionItems;
+                    }
+                    
+                    const itemsList = [];
+                    closeItems.forEach(item => {
+                        const state = updatedCheck.respuestas[item.id] || "N/A";
+                        const obs = updatedCheck.respuestas[`${item.id}_obs`] || "";
+                        itemsList.push({
+                            id: item.id,
+                            label: item.label,
+                            state: state,
+                            obs: obs
+                        });
+                    });
+                    
+                    // Enviar al webhook con acción "cierre_turno"
+                    if (WEBHOOK_URL !== "TU_WEBHOOK_URL_AQUÍ") {
+                        const payload = {
+                            action: "cierre_turno",
+                            ...updatedCheck,
+                            items: itemsList
+                        };
+                        
+                        const response = await fetch(WEBHOOK_URL, {
+                            method: "POST",
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const resData = await response.json();
+                        
+                        if (resData.status === "success" && resData.pdfBase64) {
+                            // Descargar PDF final
+                            const byteCharacters = atob(resData.pdfBase64);
+                            const byteNumbers = new Array(byteCharacters.length);
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], { type: 'application/pdf' });
+                            
+                            const link = document.createElement('a');
+                            link.href = window.URL.createObjectURL(blob);
+                            link.download = resData.filename || "Checklist_Final.pdf";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    }
+                    
+                    showModal("success");
+                    // Limpiar campos y volver a Pre-uso
+                    tabPreUse.click();
+                } catch(e) {
+                    console.error(e);
+                    showModal("error", "Error al guardar el horómetro final: " + e.message);
+                }
+            });
+
+            // Botones de Aprobación del Supervisor
+            const btnApprove = document.getElementById("btn-approve");
+            const btnReject = document.getElementById("btn-reject");
+            
+            btnApprove.addEventListener("click", () => {
+                estadoAprobacion = "APROBADO";
+                btnApprove.classList.add("active-approve");
+                btnReject.classList.remove("active-reject");
+            });
+            
+            btnReject.addEventListener("click", () => {
+                estadoAprobacion = "RECHAZADO";
+                btnReject.classList.add("active-reject");
+                btnApprove.classList.remove("active-approve");
+            });
+
+            // Configurar Canvas de Firma del Supervisor
+            canvasSup = document.getElementById("sup-signature-canvas");
+            ctxSup = canvasSup.getContext("2d");
+            
+            ctxSup.strokeStyle = "#003875";
+            ctxSup.lineWidth = 3;
+            ctxSup.lineCap = "round";
+            ctxSup.lineJoin = "round";
+            
+            canvasSup.addEventListener("mousedown", (e) => { drawingSup = true; drawSup(e); });
+            canvasSup.addEventListener("mousemove", drawSup);
+            window.addEventListener("mouseup", () => { if (drawingSup) { drawingSup = false; ctxSup.beginPath(); } });
+            
+            canvasSup.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                drawingSup = true;
+                const t = e.touches[0];
+                drawSup({ clientX: t.clientX, clientY: t.clientY });
+            });
+            canvasSup.addEventListener("touchmove", (e) => {
+                e.preventDefault();
+                if (!drawingSup) return;
+                const t = e.touches[0];
+                drawSup({ clientX: t.clientX, clientY: t.clientY });
+            });
+            window.addEventListener("touchend", () => { if (drawingSup) { drawingSup = false; ctxSup.beginPath(); } });
+            
+            document.getElementById("clear-sup-signature").addEventListener("click", () => {
+                ctxSup.clearRect(0, 0, canvasSup.width, canvasSup.height);
+                isSupSigned = false;
+                document.getElementById("sup-signature-error").style.display = "none";
+            });
+            
+            function drawSup(e) {
+                if (!drawingSup) return;
+                const r = canvasSup.getBoundingClientRect();
+                const x = (e.clientX || e.x) - r.left;
+                const y = (e.clientY || e.y) - r.top;
+                ctxSup.lineTo(x, y);
+                ctxSup.stroke();
+                ctxSup.beginPath();
+                ctxSup.moveTo(x, y);
+                isSupSigned = true;
+            }
+
+            // Registrar Decisión del Supervisor y Firmar
+            document.getElementById("btn-submit-approval").addEventListener("click", async () => {
+                const nombreSup = document.getElementById("sup_nombre").value.trim();
+                const obsSup = document.getElementById("sup_observaciones").value.trim();
+                
+                if (!estadoAprobacion) {
+                    alert("Por favor seleccione si el equipo está Aprobado o Rechazado.");
+                    return;
+                }
+                if (!nombreSup) {
+                    alert("Por favor ingrese su nombre completo.");
+                    return;
+                }
+                if (!isSupSigned) {
+                    document.getElementById("sup-signature-error").style.display = "block";
+                    alert("Por favor firme la revisión.");
+                    return;
+                }
+                
+                showModal("loading");
+                
+                try {
+                    const hoy = new Date();
+                    const fechaSup = hoy.toISOString().split('T')[0];
+                    const horaSup = String(hoy.getHours()).padStart(2, '0') + ":" + String(hoy.getMinutes()).padStart(2, '0');
+                    const firmaSup = canvasSup.toDataURL("image/png");
+                    
+                    // 1. Actualizar Supabase
+                    const { error } = await supabaseClient
+                        .from("checklists")
+                        .update({
+                            estado_aprobacion: estadoAprobacion,
+                            supervisor_nombre: nombreSup,
+                            supervisor_observacion: obsSup,
+                            supervisor_firma: firmaSup,
+                            supervisor_fecha: fechaSup,
+                            supervisor_hora: horaSup
+                        })
+                        .eq("id", supervisorChecklistId);
+                        
+                    if (error) throw error;
+                    
+                    // 2. Traer el checklist completo
+                    const { data: updatedCheck, error: fetchErr } = await supabaseClient
+                        .from("checklists")
+                        .select("*")
+                        .eq("id", supervisorChecklistId)
+                        .single();
+                        
+                    if (fetchErr) throw fetchErr;
+                    
+                    // Reconstruir la lista de items para el generador de PDF
+                    const itemsList = [];
+                    activeItems.forEach(item => {
+                        const state = updatedCheck.respuestas[item.id] || "N/A";
+                        const obs = updatedCheck.respuestas[`${item.id}_obs`] || "";
+                        itemsList.push({
+                            id: item.id,
+                            label: item.label,
+                            state: state,
+                            obs: obs
+                        });
+                    });
+                    
+                    // Enviar al webhook con acción "aprobacion_supervisor"
+                    if (WEBHOOK_URL !== "TU_WEBHOOK_URL_AQUÍ") {
+                        const payload = {
+                            action: "aprobacion_supervisor",
+                            ...updatedCheck,
+                            items: itemsList
+                        };
+                        
+                        const response = await fetch(WEBHOOK_URL, {
+                            method: "POST",
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const resData = await response.json();
+                        
+                        if (resData.status === "success" && resData.pdfBase64) {
+                            // Descargar PDF firmado por ambos
+                            const byteCharacters = atob(resData.pdfBase64);
+                            const byteNumbers = new Array(byteCharacters.length);
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], { type: 'application/pdf' });
+                            
+                            const link = document.createElement('a');
+                            link.href = window.URL.createObjectURL(blob);
+                            link.download = resData.filename || "Checklist_Aprobado.pdf";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    }
+                    
+                    showModal("success");
+                    document.getElementById("close-modal-btn").onclick = () => {
+                        window.location.href = window.location.pathname;
+                    };
+                } catch(e) {
+                    console.error(e);
+                    showModal("error", "Error al guardar revisión del supervisor: " + e.message);
+                }
+            });
+
+            // --- DETECTAR MODO SUPERVISOR POR URL (Inyectado por Servidor Google) ---
+            const checklistId = "<?= checklistId ?>";
+            
+            if (checklistId && checklistId !== "" && checklistId !== "undefined" && checklistId !== "null") {
+                isSupervisorMode = true;
+                supervisorChecklistId = checklistId;
+                
+                // Ocultar pestañas y botón de envío de operador
+                document.getElementById("nav-tabs").style.display = "none";
+                document.querySelector(".form-actions").style.display = "none";
+                
+                showModal("loading");
+                
+                // Buscar datos en Supabase
+                supabaseClient.from("checklists").select("*").eq("id", checklistId).single().then(({ data: check, error }) => {
+                    if (error || !check) {
+                        showModal("error", "No se encontró el checklist con ID especificado.");
+                        return;
+                    }
+                    
+                    // Rellenar cabecera de datos
+                    document.getElementById("tipo_equipo").value = check.tipo_equipo;
+                    document.getElementById("fecha").value = check.fecha;
+                    document.getElementById("hora").value = check.hora;
+                    document.getElementById("turno").value = check.turno;
+                    document.getElementById("faena").value = check.faena;
+                    document.getElementById("numero_equipo").value = check.numero_equipo;
+                    document.getElementById("horometro").value = check.horometro;
+                    
+                    if (check.horometro_final) {
+                        const hfGroup = document.getElementById("horometro-final-group");
+                        hfGroup.classList.remove("hidden-field");
+                        document.getElementById("horometro_final").value = check.horometro_final;
+                    }
+                    
+                    document.getElementById("inspector_nombre").value = check.inspector_nombre;
+                    document.getElementById("inspector_rut").value = check.inspector_rut;
+                    document.getElementById("observaciones").value = check.observaciones || "";
+                    
+                    // Deshabilitar todos los inputs de cabecera
+                    const headerInputs = document.querySelectorAll("#checklist-form input, #checklist-form select, #checklist-form textarea");
+                    headerInputs.forEach(input => input.setAttribute("disabled", "true"));
+                    
+                    // Cargar respuestas en la tabla
+                    if (check.tipo_equipo === "Excavadora") {
+                        activeItems = excavadoraItems;
+                    } else if (check.tipo_equipo === "Bulldozer") {
+                        activeItems = bulldozerItems;
+                    } else if (check.tipo_equipo === "Motoniveladora") {
+                        activeItems = motoniveladoraItems;
+                    } else {
+                        activeItems = camionItems;
+                    }
+                    
+                    document.getElementById("table-title-name").textContent = check.tipo_equipo;
+                    document.getElementById("count-total").textContent = activeItems.length;
+                    
+                    // Renderizar tabla en modo lectura
+                    renderItemsReadonly("items-container", activeItems, check.respuestas);
+                    
+                    // Reemplazar canvas de firma de operador por su imagen de firma guardada
+                    const sigContainer = document.querySelector(".signature-container");
+                    sigContainer.innerHTML = `<img src="${check.firma}" class="operator-signature-img" alt="Firma del Operador">`;
+                    
+                    // Mostrar sección de Supervisor
+                    document.getElementById("supervisor-section").classList.remove("hidden-field");
+                    
+                    // Redimensionar el canvas de firma del supervisor tras mostrarlo
+                    setTimeout(() => {
+                        const r = canvasSup.getBoundingClientRect();
+                        canvasSup.width = r.width;
+                        canvasSup.height = r.height;
+                    }, 300);
+                    
+                    showModal("success");
+                    document.getElementById("close-modal-btn").onclick = () => {
+                        document.getElementById("status-modal").classList.remove("active");
+                    };
+                }).catch(e => {
+                    console.error(e);
+                    showModal("error", "Error cargando chequeo: " + e.message);
+                });
+            }
+        });
+
+        // --- RENDERIZADO DE TABLAS ---
+        function renderItems(containerId, itemsList) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+
+            // Resetear respuestas al cambiar de equipo
+            Object.keys(respuestas).forEach(k => delete respuestas[k]);
+
+            itemsList.forEach(item => {
+                respuestas[item.id] = null;
+
+                const row = document.createElement("div");
+                row.className = "table-row";
+                row.id = `item-row-${item.id}`;
+                row.innerHTML = `
+                    <div class="col-num">${item.id}</div>
+                    <div class="col-text">${item.label}</div>
+                    <div class="col-status">
+                        <div class="option-selector">
+                            <button type="button" class="opt-btn" data-id="${item.id}" data-state="SI">SÍ</button>
+                            <button type="button" class="opt-btn" data-id="${item.id}" data-state="NO">NO</button>
+                            <button type="button" class="opt-btn" data-id="${item.id}" data-state="N/A">N/A</button>
+                        </div>
+                    </div>
+                    <div class="col-obs">
+                        <div class="inspect-item-obs-container">
+                            <input type="text" class="inspect-item-obs" id="obs-${item.id}" placeholder="Detalle la falla..." disabled>
+                        </div>
+                    </div>
+                `;
+
+                // Eventos botones
+                const buttons = row.querySelectorAll(".opt-btn");
+                buttons.forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        buttons.forEach(b => b.classList.remove("active"));
+                        btn.classList.add("active");
+                        
+                        respuestas[item.id] = btn.getAttribute("data-state");
+                        row.classList.remove("unanswered");
+
+                        // Activar observaciones si es NO
+                        const obsInput = document.getElementById(`obs-${item.id}`);
+                        if (respuestas[item.id] === "NO") {
+                            obsInput.removeAttribute("disabled");
+                            obsInput.classList.add("active-error");
+                            obsInput.setAttribute("required", "true");
+                        } else {
+                            obsInput.setAttribute("disabled", "true");
+                            obsInput.classList.remove("active-error");
+                            obsInput.removeAttribute("required");
+                            obsInput.value = "";
+                            obsInput.style.borderColor = "var(--border-color)";
+                        }
+
+                        updateCounter();
+                    });
+                });
+
+                container.appendChild(row);
+            });
+        }
+
+        function renderItemsReadonly(containerId, itemsList, savedAnswers) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            
+            let count = 0;
+            itemsList.forEach(item => {
+                const state = savedAnswers[item.id] || "N/A";
+                const obs = savedAnswers[`${item.id}_obs`] || "";
+                if (state !== "N/A" && state !== "") count++;
+                
+                const row = document.createElement("div");
+                row.className = "table-row";
+                row.innerHTML = `
+                    <div class="col-num">${item.id}</div>
+                    <div class="col-text">${item.label}</div>
+                    <div class="col-status">
+                        <div style="font-weight: bold; color: ${state === "SI" ? "var(--success)" : state === "NO" ? "var(--danger)" : "var(--text-muted)"}">
+                            ${state}
+                        </div>
+                    </div>
+                    <div class="col-obs">
+                        <div style="font-style: italic; font-size: 12px; color: var(--text-muted);">
+                            ${obs ? obs : "-"}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+            document.getElementById("count-items").textContent = count;
+        }
+
+        // --- CONTADOR ---
+        function updateCounter() {
+            let count = 0;
+            activeItems.forEach(item => {
+                if (respuestas[item.id] !== null) count++;
+            });
+            document.getElementById("count-items").textContent = count;
+        }
+
+        // --- CANVAS DE FIRMA ---
+        let isSigned = false;
+        let canvas, ctx;
+        let drawing = false;
+
+        function initSignatureCanvas() {
+            canvas = document.getElementById("signature-canvas");
+            ctx = canvas.getContext("2d");
+
+            resizeCanvas();
+            window.addEventListener("resize", resizeCanvas);
+
+            ctx.strokeStyle = "#003875";
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            canvas.addEventListener("mousedown", (e) => { drawing = true; draw(e); });
+            canvas.addEventListener("mousemove", draw);
+            window.addEventListener("mouseup", () => { if (drawing) { drawing = false; ctx.beginPath(); } });
+
+            canvas.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                drawing = true;
+                const t = e.touches[0];
+                draw({ clientX: t.clientX, clientY: t.clientY });
+            });
+            canvas.addEventListener("touchmove", (e) => {
+                e.preventDefault();
+                if (!drawing) return;
+                const t = e.touches[0];
+                draw({ clientX: t.clientX, clientY: t.clientY });
+            });
+            window.addEventListener("touchend", () => { if (drawing) { drawing = false; ctx.beginPath(); } });
+
+            document.getElementById("clear-signature").addEventListener("click", () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                isSigned = false;
+                document.getElementById("signature-error").style.display = "none";
+            });
+        }
+
+        function resizeCanvas() {
+            const r = canvas.getBoundingClientRect();
+            canvas.width = r.width;
+            canvas.height = r.height;
+            if (ctx) {
+                ctx.strokeStyle = "#003875";
+                ctx.lineWidth = 3;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+            }
+            isSigned = false;
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            const r = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.x) - r.left;
+            const y = (e.clientY || e.y) - r.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            isSigned = true;
+        }
+
+        // --- SUBMIT ---
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            const tipoEquipo = document.getElementById("tipo_equipo").value;
+
+            // 1. Validar Identificación
+            const fields = ["fecha", "hora", "turno", "faena", "numero_equipo", "horometro", "inspector_nombre", "inspector_rut"];
+            let valid = true;
+            fields.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el.value) {
+                    el.style.borderColor = "var(--danger)";
+                    valid = false;
+                } else {
+                    el.style.borderColor = "var(--border-color)";
+                }
+            });
+
+
+            // 2. Validar respuestas
+            let itemsAnswered = true;
+            let obsFilled = true;
+            let unansweredRow = null;
+            let missingObsInput = null;
+
+            activeItems.forEach(item => {
+                const row = document.getElementById(`item-row-${item.id}`);
+                const obs = document.getElementById(`obs-${item.id}`);
+
+                if (respuestas[item.id] === null) {
+                    row.classList.add("unanswered");
+                    itemsAnswered = false;
+                    if (!unansweredRow) unansweredRow = row;
+                } else {
+                    row.classList.remove("unanswered");
+                    if (respuestas[item.id] === "NO" && !obs.value.trim()) {
+                        obs.style.borderColor = "var(--danger)";
+                        obs.classList.add("active-error");
+                        obsFilled = false;
+                        if (!missingObsInput) missingObsInput = obs;
+                    } else {
+                        obs.style.borderColor = "var(--border-color)";
+                    }
+                }
+            });
+
+            // 3. Validar Firma
+            const sigErr = document.getElementById("signature-error");
+            if (!isSigned) {
+                sigErr.style.display = "block";
+                valid = false;
+            } else {
+                sigErr.style.display = "none";
+            }
+
+            if (!valid || !itemsAnswered || !obsFilled) {
+                if (unansweredRow) {
+                    unansweredRow.scrollIntoView({ behavior: "smooth", block: "center" });
+                    alert("Responda todos los elementos del Check List antes de guardar.");
+                } else if (missingObsInput) {
+                    missingObsInput.scrollIntoView({ behavior: "smooth", block: "center" });
+                    missingObsInput.focus();
+                    alert("Detalle la falla para los elementos marcados como NO.");
+                } else {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    alert("Complete todos los campos requeridos de la identificación.");
+                }
+                return;
+            }
+
+            // Recopilar datos de respuestas y formatear ítems para el servidor
+            const respuestasConObs = {};
+            const itemsList = [];
+            activeItems.forEach(item => {
+                const state = respuestas[item.id] || "N/A";
+                const obs = document.getElementById(`obs-${item.id}`).value.trim();
+                respuestasConObs[item.id] = state;
+                respuestasConObs[`${item.id}_obs`] = state === "NO" ? obs : "";
+                itemsList.push({
+                    id: item.id,
+                    label: item.label,
+                    state: state,
+                    obs: state === "NO" ? obs : ""
+                });
+            });
+
+            const data = {
+                fecha: document.getElementById("fecha").value,
+                hora: document.getElementById("hora").value,
+                turno: document.getElementById("turno").value,
+                faena: document.getElementById("faena").value,
+                numero_equipo: document.getElementById("numero_equipo").value,
+                horometro: parseFloat(document.getElementById("horometro").value),
+                horometro_final: null,
+                tipo_equipo: tipoEquipo,
+                inspector_nombre: document.getElementById("inspector_nombre").value,
+                inspector_rut: document.getElementById("inspector_rut").value,
+                modelo_equipo: tipoEquipo, // Para compatibilidad
+                inspector_cargo: "Operador",
+                observaciones: document.getElementById("observaciones").value,
+                respuestas: respuestasConObs,
+                items: itemsList,
+                firma: canvas.toDataURL("image/png")
+            };
+
+            showModal("loading");
+
+            if (!supabaseClient) {
+                showModal("error", "Error de servidor: No se cargó la base de datos.");
+                return;
+            }
+
+            try {
+                // 1. Guardar en la Base de Datos Supabase (retornando la fila insertada para tener el ID)
+                let insertedCheck;
+                try {
+                    const { data: insertedRows, error } = await supabaseClient.from("checklists").insert([{
+                        fecha: data.fecha,
+                        hora: data.hora,
+                        turno: data.turno,
+                        faena: data.faena,
+                        numero_equipo: data.numero_equipo,
+                        horometro: data.horometro,
+                        horometro_final: data.horometro_final,
+                        tipo_equipo: data.tipo_equipo,
+                        inspector_nombre: data.inspector_nombre,
+                        inspector_rut: data.inspector_rut,
+                        modelo_equipo: data.modelo_equipo,
+                        inspector_cargo: data.inspector_cargo,
+                        observaciones: data.observaciones,
+                        respuestas: data.respuestas,
+                        firma: data.firma
+                    }]).select();
+                    
+                    if (error) throw error;
+                    if (insertedRows && insertedRows.length > 0) {
+                        insertedCheck = insertedRows[0];
+                    }
+                } catch (dbErr) {
+                    throw new Error("Supabase: " + (dbErr.message || JSON.stringify(dbErr)));
+                }
+
+                // 2. Enviar a Google Apps Script para enviar correo y descargar el PDF oficial generado en el servidor
+                if (WEBHOOK_URL !== "TU_WEBHOOK_URL_AQUÍ") {
+                    try {
+                        const payload = {
+                            action: "creacion_chequeo",
+                            ...data,
+                            id: insertedCheck ? insertedCheck.id : null
+                        };
+                        
+                        // Si RLS impidió retornar el ID en el insert, intentamos recuperarlo con una consulta rápida
+                        if (!payload.id) {
+                            try {
+                                const { data: lastRows } = await supabaseClient
+                                    .from("checklists")
+                                    .select("id")
+                                    .eq("numero_equipo", data.numero_equipo)
+                                    .order("created_at", { ascending: false })
+                                    .limit(1);
+                                if (lastRows && lastRows.length > 0) {
+                                    payload.id = lastRows[0].id;
+                                }
+                            } catch (e) {
+                                console.error("No se pudo recuperar el ID por consulta alternativa:", e);
+                            }
+                        }
+                        
+                        const response = await fetch(WEBHOOK_URL, {
+                            method: "POST",
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const resData = await response.json();
+
+                        if (resData.status === "success" && resData.pdfBase64) {
+                            // Descargar el PDF devuelto por el servidor
+                            const byteCharacters = atob(resData.pdfBase64);
+                            const byteNumbers = new Array(byteCharacters.length);
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], { type: 'application/pdf' });
+                            
+                            const link = document.createElement('a');
+                            link.href = window.URL.createObjectURL(blob);
+                            link.download = resData.filename || "Checklist.pdf";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        } else {
+                            throw new Error(resData.message || "Respuesta sin PDF de respaldo.");
+                        }
+                    } catch (gasErr) {
+                        throw new Error("Google Apps Script Web App: " + gasErr.message);
+                    }
+                }
+
+                showModal("success");
+                resetForm();
+            } catch (err) {
+                console.error(err);
+                showModal("error", "Detalle: " + err.message);
+            }
+        }
+
+        // --- AUXILIARES MODALES ---
+        function showModal(state, msg = "") {
+            const m = document.getElementById("status-modal");
+            m.classList.add("active");
+            document.getElementById("modal-loading").classList.add("hidden");
+            document.getElementById("modal-success").classList.add("hidden");
+            document.getElementById("modal-error").classList.add("hidden");
+
+            if (state === "loading") {
+                document.getElementById("modal-loading").classList.remove("hidden");
+            } else if (state === "success") {
+                document.getElementById("modal-success").classList.remove("hidden");
+                document.getElementById("close-modal-btn").onclick = () => m.classList.remove("active");
+            } else {
+                document.getElementById("modal-error").classList.remove("hidden");
+                if (msg) document.getElementById("modal-error-msg").textContent = msg;
+                document.getElementById("retry-modal-btn").onclick = () => m.classList.remove("active");
+            }
+        }
+
+        function resetForm() {
+            document.getElementById("turno").value = "";
+            document.getElementById("faena").value = "";
+            document.getElementById("numero_equipo").value = "";
+            document.getElementById("horometro").value = "";
+            const hf = document.getElementById("horometro_final");
+            if (hf) hf.value = "";
+            document.getElementById("inspector_nombre").value = "";
+            document.getElementById("inspector_rut").value = "";
+            document.getElementById("observaciones").value = "";
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            isSigned = false;
+
+            const buttons = document.querySelectorAll(".opt-btn");
+            buttons.forEach(b => b.classList.remove("active"));
+            
+            Object.keys(respuestas).forEach(k => respuestas[k] = null);
+            
+            const obsInputs = document.querySelectorAll(".inspect-item-obs");
+            obsInputs.forEach(i => {
+                i.value = "";
+                i.setAttribute("disabled", "true");
+                i.removeAttribute("required");
+                i.classList.remove("active-error");
+            });
+
+            updateCounter();
+        }
+    </script>
+</body>
+</html>
