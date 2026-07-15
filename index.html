@@ -1267,8 +1267,9 @@
                 }
             });
 
-            // --- DETECTAR MODO SUPERVISOR POR URL (Inyectado por Servidor Google) ---
-            const checklistId = "<?= checklistId ?>";
+            // --- DETECTAR MODO SUPERVISOR POR URL (Para hosting estático en GitHub Pages) ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const checklistId = urlParams.get("id");
             
             if (checklistId && checklistId !== "" && checklistId !== "undefined" && checklistId !== "null") {
                 isSupervisorMode = true;
