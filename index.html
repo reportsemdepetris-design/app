@@ -616,15 +616,15 @@
                     <input type="number" id="close_horometro_final" placeholder="Ingrese horómetro final registrado" min="0">
                 </div>
 
-                <!-- Pregunta sobre fallas durante el turno -->
+                <!-- Pregunta sobre operatividad del equipo al cierre -->
                 <div class="form-group" style="margin-top: 15px;">
-                    <label>¿El equipo sufrió alguna falla o cambio de estado durante el turno?</label>
+                    <label>¿El equipo se entrega operativo al finalizar el turno?</label>
                     <div style="display: flex; gap: 12px; margin-top: 6px;">
                         <button type="button" class="btn-decision active-approve" id="btn-close-no-failure">
-                            <i data-lucide="x" style="width: 16px; height: 16px;"></i> No
+                            <i data-lucide="check" style="width: 16px; height: 16px;"></i> Sí (Operativo)
                         </button>
                         <button type="button" class="btn-decision" id="btn-close-has-failure">
-                            <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> Sí
+                            <i data-lucide="x" style="width: 16px; height: 16px;"></i> No (Con Fallas)
                         </button>
                     </div>
                 </div>
@@ -1714,7 +1714,6 @@
             canvas.width = r.width;
             canvas.height = r.height;
             if (ctx) {
-
                 ctx.strokeStyle = "#003875";
                 ctx.lineWidth = 3;
                 ctx.lineCap = "round";
